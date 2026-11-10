@@ -25,8 +25,7 @@ use rustls::{
     crypto::aws_lc_rs::{ALL_CIPHER_SUITES, cipher_suite::*, default_provider},
 };
 use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr as StdSocketAddr},
-    str::FromStr,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr as StdSocketAddr},
     sync::Arc,
 };
 use store::registry::{RegistryObject, bootstrap::Bootstrap};
@@ -42,6 +41,19 @@ pub fn recovery_mode_port() -> u16 {
         .ok()
         .and_then(|port| port.parse().ok())
         .unwrap_or(DEFAULT_RECOVERY_MODE_PORT)
+}
+
+/// Address of the recovery mode HTTP listener: all interfaces unless
+/// `STALWART_RECOVERY_MODE_ADDRESS` names one. An invalid value falls back to
+/// loopback instead of exposing the listener on every interface.
+pub fn recovery_mode_address() -> IpAddr {
+    match std::env::var("STALWART_RECOVERY_MODE_ADDRESS") {
+        Ok(address) => address.trim().parse().unwrap_or_else(|_| {
+            eprintln!("Invalid STALWART_RECOVERY_MODE_ADDRESS {address:?}, using 127.0.0.1.");
+            IpAddr::V4(Ipv4Addr::LOCALHOST)
+        }),
+        Err(_) => IpAddr::V6(Ipv6Addr::UNSPECIFIED),
+    }
 }
 
 impl Listeners {
@@ -75,10 +87,10 @@ impl Listeners {
                 RegistryObject {
                     id: ObjectId::new(ObjectType::NetworkListener, Id::singleton()),
                     object: NetworkListener {
-                        bind: Map::new(vec![
-                            SocketAddr::from_str(&format!("[::]:{}", recovery_mode_port()))
-                                .unwrap(),
-                        ]),
+                        bind: Map::new(vec![SocketAddr(StdSocketAddr::new(
+                            recovery_mode_address(),
+                            recovery_mode_port(),
+                        ))]),
                         name: "http-recovery".to_string(),
                         protocol: NetworkListenerProtocol::Http,
                         implicit_tls: false,

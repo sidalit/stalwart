@@ -257,6 +257,9 @@ write_env_file() {
 # HTTP port used in recovery mode. Default: 8080.
 #STALWART_RECOVERY_MODE_PORT=9090
 
+# Address the recovery mode HTTP listener binds to. Default: all interfaces.
+#STALWART_RECOVERY_MODE_ADDRESS=127.0.0.1
+
 # Fixed administrator credentials — format: username:password
 # Default: a temporary random password is generated and printed to the logs.
 #STALWART_RECOVERY_ADMIN=admin:changeme
